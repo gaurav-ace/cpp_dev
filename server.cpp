@@ -1,70 +1,64 @@
 #include <iostream>
-#include <stdlib.h>  // type conversions and some predefined genral macros
-#include <string.h>
-#include <unistd.h>  // used for some type posix based API calls
-#include <arpa/inet.h> 
-
-#define PORT 12345
-#define MAX_BUFFER_SIZE 1024
+#include <cstdlib>
+#include <cstring>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h> // needed for inet_aton() 
 
 int main() {
-    int server_socket, client_socket;
-    struct sockaddr_in server_address, client_address;
-    socklen_t client_address_len = sizeof(client_address);
-    char buffer[MAX_BUFFER_SIZE];
+    int serverSocket, clientSocket;
+    struct sockaddr_in serverAddr, clientAddr;
+    socklen_t clientAddrLen = sizeof(clientAddr);
 
     // Create socket
-    if ((server_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        std::cout << "Socket creation failed \n";
-        exit(EXIT_FAILURE);
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == -1) {
+        std::cerr << "Error creating socket" << std::endl;
+        return EXIT_FAILURE;
     }
 
-    // Configure server address
-    memset(&server_address, 0, sizeof(server_address));
-    server_address.sin_family = AF_INET;
-    server_address.sin_addr.s_addr = htonl(INADDR_ANY);
-    server_address.sin_port = htons(PORT);
+    // Set up server address structure
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(12345); // Port number
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
 
-    // Bind socket to the specified address and port
-    if (bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address)) == -1) {
-        std::cout << "Bind failed \n";
-        exit(EXIT_FAILURE);
+    // Bind socket
+    if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+        std::cerr << "Error binding socket" << std::endl;
+        return EXIT_FAILURE;
     }
 
     // Listen for incoming connections
-    if (listen(server_socket, 5) == -1) {
-        std::cout << "Listen failure \n";
-        exit(EXIT_FAILURE);
+    if (listen(serverSocket, 5) == -1) {
+        std::cerr << "Error listening on socket" << std::endl;
+        return EXIT_FAILURE;
     }
 
-    printf("Server is listening on port %d...\n", PORT);
+    std::cout << "Server listening on port 12345..." << std::endl;
 
     // Accept incoming connection
-    if ((client_socket = accept(server_socket, (struct sockaddr *)&client_address, &client_address_len)) == -1) {
-        std::cout << "Accept failed \n";
-        exit(EXIT_FAILURE);
+    clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
+    if (clientSocket == -1) {
+        std::cerr << "Error accepting connection" << std::endl;
+        return EXIT_FAILURE;
     }
 
-    std::cout << "Client connected \n";
+    std::cout << "Connection accepted from " << inet_ntoa(clientAddr.sin_addr) << std::endl;
 
-    // Receive data from client
-    ssize_t bytes_received;
-    while ((bytes_received = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
-        buffer[bytes_received] = '\0';
-        std::cout << "Received: " << buffer << "\n";
+    // Communication with the client
+    char buffer[1024];
+    memset(buffer, 0, sizeof(buffer));
+    ssize_t bytesRead;
 
-        // Send a response to the client
-        send(client_socket, buffer, strlen(buffer), 0);
+    while ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0) {
+        std::cout << "Received: " << buffer << std::endl;
+        send(clientSocket, buffer, bytesRead, 0);
+        memset(buffer, 0, sizeof(buffer));
     }
 
-    if (bytes_received == -1) {
-        std::cout << "Receive failed \n";
-        exit(EXIT_FAILURE);
-    }
-
-    // Close sockets
-    close(client_socket);
-    close(server_socket);
+    close(clientSocket);
+    close(serverSocket);
 
     return 0;
 }

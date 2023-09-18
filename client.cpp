@@ -1,63 +1,53 @@
 #include <iostream>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>  
+#include <cstdlib>
+#include <cstring>
+#include <unistd.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
-
-#define SERVER_IP "127.0.0.1"
-#define PORT 12345
-#define MAX_BUFFER_SIZE 1024
+#include <sys/socket.h>
 
 int main() {
-    int client_socket;
-    struct sockaddr_in server_address;
-    char message[MAX_BUFFER_SIZE];
+    int clientSocket;
+    struct sockaddr_in serverAddr;
 
     // Create socket
-    if ((client_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        std::cout << "Socket creation failed \n";
-        exit(EXIT_FAILURE);
+    clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (clientSocket == -1) {
+        std::cerr << "Error creating socket" << std::endl;
+        return EXIT_FAILURE;
     }
 
-    // Configure server address
-    memset(&server_address, 0, sizeof(server_address));
-    server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(PORT);
-
-    // Convert IPv4 and IPv6 addresses from text to binary form
-    if (inet_pton(AF_INET, SERVER_IP, &server_address.sin_addr) <= 0) {
-        std::cout << "Invalid address \n";
-        exit(EXIT_FAILURE);
-    }
+    // Set up server address structure
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(12345); // Port number
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1"); // Server IP address
 
     // Connect to the server
-    if (connect(client_socket, (struct sockaddr *)&server_address, sizeof(server_address)) == -1) {
-        std::cout << "Connection failed \n";
-        exit(EXIT_FAILURE);
+    if (connect(clientSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+        std::cerr << "Error connecting to server" << std::endl;
+        return EXIT_FAILURE;
     }
 
-    std::cout << "Connected to server \n";
-
-    // Send a message to the server
-    std::string buff;
-    std::getline(std::cin, buff);
+    // Communication with the server
+    char buffer[1024];
+    std::string message;
     
-    //strcpy(message, "Hello, server!");
+    while (true) {
+        std::cout << "Enter a message (or 'exit' to quit): ";
+        std::getline(std::cin, message);
 
-    send(client_socket, buff.c_str(), buff.size(), 0);
+        if (message == "exit") {
+            break;
+        }
 
-    // Receive a response from the server
-    char buffer[MAX_BUFFER_SIZE];
-    ssize_t bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
-    if (bytes_received > 0) {
-        buffer[bytes_received] = '\0';
-        std::cout << "Received from server: " << buffer << "\n";
-    } else {
-        std::cout << "Receive failed \n";
+        send(clientSocket, message.c_str(), message.size(), 0);
+        memset(buffer, 0, sizeof(buffer));
+        recv(clientSocket, buffer, sizeof(buffer), 0);
+
+        std::cout << "Server response: " << buffer << std::endl;
     }
 
-    // Close the socket
-    close(client_socket);
+    close(clientSocket);
 
     return 0;
 }
