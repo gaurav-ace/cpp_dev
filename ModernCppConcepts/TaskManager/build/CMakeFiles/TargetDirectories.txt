@@ -1,0 +1,3 @@
+/mnt/d/cpp_dev/ModernCppConcepts/TaskManager/build/CMakeFiles/taskManager.dir
+/mnt/d/cpp_dev/ModernCppConcepts/TaskManager/build/CMakeFiles/edit_cache.dir
+/mnt/d/cpp_dev/ModernCppConcepts/TaskManager/build/CMakeFiles/rebuild_cache.dir
